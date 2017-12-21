@@ -1,0 +1,75 @@
+# MagicHomeControl
+ND-controller-NAME = MagicHome Bridge
+CMD-ctl-DISCOVER-NAME = Re-Discover LEDs
+ST-ctl-ST-NAME = NodeServer Online
+
+# Color Bulbs
+ND-magichomeled-NAME = MagicHome RGB LED
+ST-mhledrgb-NAME = MagicHome LED
+ST-mhledrgb-ST-NAME = Brightness
+ST-mhledrgb-GV1-NAME = Red
+ST-mhledrgb-GV2-NAME = Green
+ST-mhledrgb-GV3-NAME = Blue
+ST-mhledrgb-GV4-NAME = Connected
+ST-mhledrgb-GV5-NAME = Mode
+CMD-mhledrgb-DON-NAME = On
+CMD-mhledrgb-DOF-NAME = Off
+CMD-mhledrgb-DFOF-NAME = Fast Off
+CMD-mhledrgb-DFON-NAME = Fast On
+CMD-mhledrgb-BRT-NAME = Brighten
+CMD-mhledrgb-DIM-NAME = Dim
+CMD-mhledrgb-QUERY-NAME = Query
+CMD-mhledrgb-SETR-NAME = Set Red
+CMD-mhledrgb-SETG-NAME = Set Green
+CMD-mhledrgb-SETB-NAME = Set Blue
+CMD-mhledrgb-SET_RGB-NAME = Change RGB
+CMD-mhledrgb-SET_COLOR-NAME = Set Color To
+
+# Color and WW Bulbs
+ND-magichomewwled-NAME = MagicHome RGBW LED
+ST-mhledww-NAME = MagicHome LED
+ST-mhledww-ST-NAME = Brightness
+ST-mhledww-GV1-NAME = Red
+ST-mhledww-GV2-NAME = Green
+ST-mhledww-GV3-NAME = Blue
+ST-mhledww-GV4-NAME = Connected
+ST-mhledww-GV5-NAME = Mode
+ST-mhledww-GV6-NAME = White
+CMD-mhledww-DON-NAME = On
+CMD-mhledww-DOF-NAME = Off
+CMD-mhledww-DFOF-NAME = Fast Off
+CMD-mhledww-DFON-NAME = Fast On
+CMD-mhledww-BRT-NAME = Brighten
+CMD-mhledww-DIM-NAME = Dim
+CMD-mhledww-QUERY-NAME = Query
+CMD-mhledww-SETR-NAME = Set Red
+CMD-mhledww-SETG-NAME = Set Green
+CMD-mhledww-SETB-NAME = Set Blue
+CMD-mhledww-SETW-NAME = Set White
+CMD-mhledww-SET_RGB-NAME = Change RGB
+CMD-mhledww-SET_RGBW-NAME = Change RGBW
+CMD-mhledww-SET_COLOR-NAME = Set Color To
+CMD-mhledww-SET_TEMP-NAME = Set Color Temperature
+
+COLOR_CHOICE-0 = Red
+COLOR_CHOICE-1 = Orange
+COLOR_CHOICE-2 = Yellow
+COLOR_CHOICE-3 = Green
+COLOR_CHOICE-4 = Cyan
+COLOR_CHOICE-5 = Blue
+COLOR_CHOICE-6 = Purple
+COLOR_CHOICE-7 = Pink
+COLOR_CHOICE-8 = White
+COLOR_CHOICE-9 = Cold White
+COLOR_CHOICE-10 = Warm White
+COLOR_CHOICE-11 = Gold
+
+MH_MODE_STATUS-0 = Off
+MH_MODE_STATUS-1 = Color
+MH_MODE_STATUS-2 = Warm White
+MH_MODE_STATUS-3 = Custom
+MH_MODE_STATUS-4 = Preset
+MH_MODE_STATUS-5 = Sunrise
+MH_MODE_STATUS-6 = Sunset
+MH_MODE_STATUS-7 = Default
+MH_MODE_STATUS-8 = Unknown

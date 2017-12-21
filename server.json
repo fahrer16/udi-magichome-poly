@@ -1,0 +1,21 @@
+{
+  "name": "MagicHome",
+  "docs": "https://github.com/fahrer16/udi-magichome-poly",
+  "type": "python3",
+  "executable": "magichome.py",
+  "install": "install.sh",
+  "description": "MagicHome LED NodeServer for UDI's Polyglot Platform",
+  "notice": "\"MagicHome\" is trademarked.  This Node Server is neither developed nor endorsed by the manufacturers of LED's controlled by the MagicHome app (e.g. Zengge, LEDENET, etc...) or Universal Devices (UDI).  The author takes no responsibility for the function of the software or any results of its use.  Use at your own risk.",
+  "shortPoll": "5",
+  "longPoll": "60",
+  "credits": [
+    {
+      "title": "MagicHome LED Node Server",
+      "author": "Brian Feeney (fahrer16)",
+      "version": "2.0.0",
+      "date": "December 17, 2017",
+      "source": "https://github.com/fahrer16/udi-magichome-poly",
+      "license": "https://github.com/fahrer16/udi-magichome-poly/blob/master/LICENSE"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+polyinterface>=2.0.0
+flux-led>=0.20

@@ -1,0 +1,20 @@
+<editors>
+  <editor id="mhbool">
+    <range uom="2" />
+  </editor>
+  <editor id="mhledc">
+    <range uom="56" min="0" max="255" prec="0" step="1" />
+  </editor>
+  <editor id="mhpower">
+    <range uom="51" min="0" max="100" prec="0" step="1" />
+  </editor>
+  <editor id="mhchoice">
+    <range uom="25" subset="0-11" nls="COLOR_CHOICE" />
+  </editor>
+  <editor id="mhmode">
+    <range uom="25" subset="0-8" nls="MH_MODE_STATUS" />
+  </editor>
+  <editor id="mhtemp">
+    <range uom="26" min="2700" max="6500" prec="0" step="100" />
+  </editor>
+</editors>
