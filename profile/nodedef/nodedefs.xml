@@ -22,7 +22,7 @@
       <st id="GV2" editor="mhledc" />
       <st id="GV3" editor="mhledc" />
       <st id="GV4" editor="mhbool" />
-      <st id="GV5" editor="mhmode" />
+      <!--<st id="GV5" editor="mhmode" />-->
     </sts>
     <cmds>
       <sends />
@@ -65,7 +65,7 @@
       <st id="GV3" editor="mhledc" />
       <st if="GV6" editor="mhledc" />
       <st id="GV4" editor="mhbool" />
-      <st id="GV5" editor="mhmode" />
+      <!--<st id="GV5" editor="mhmode" />-->
     </sts>
     <cmds>
       <sends />

@@ -1,10 +1,12 @@
 # MagicHomeControl
 ND-controller-NAME = MagicHome Bridge
-CMD-ctl-DISCOVER-NAME = Re-Discover LEDs
+ND-controller-ICON = GenericCtl
 ST-ctl-ST-NAME = NodeServer Online
+CMD-ctl-DISCOVER-NAME = Re-Discover LEDs
 
 # Color Bulbs
-ND-magichomeled-NAME = MagicHome RGB LED
+ND-mhled-NAME = MagicHome RGB LED
+ND-mhled-ICON = Lamp
 ST-mhledrgb-NAME = MagicHome LED
 ST-mhledrgb-ST-NAME = Brightness
 ST-mhledrgb-GV1-NAME = Red
@@ -26,7 +28,8 @@ CMD-mhledrgb-SET_RGB-NAME = Change RGB
 CMD-mhledrgb-SET_COLOR-NAME = Set Color To
 
 # Color and WW Bulbs
-ND-magichomewwled-NAME = MagicHome RGBW LED
+ND-mhwwled-NAME = MagicHome RGBW LED
+ND-mhwwled-Icon = Lamp
 ST-mhledww-NAME = MagicHome LED
 ST-mhledww-ST-NAME = Brightness
 ST-mhledww-GV1-NAME = Red
