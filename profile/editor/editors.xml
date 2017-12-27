@@ -11,9 +11,9 @@
   <editor id="mhchoice">
     <range uom="25" subset="0-11" nls="COLOR_CHOICE" />
   </editor>
-  <!--<editor id="mhmode">
+  <editor id="mhmode">
     <range uom="25" subset="0-8" nls="MH_MODE_STATUS" />
-  </editor>-->
+  </editor>
   <editor id="mhtemp">
     <range uom="26" min="2700" max="6500" prec="0" step="100" />
   </editor>

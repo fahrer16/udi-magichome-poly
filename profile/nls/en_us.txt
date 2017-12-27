@@ -5,8 +5,8 @@ ST-ctl-ST-NAME = NodeServer Online
 CMD-ctl-DISCOVER-NAME = Re-Discover LEDs
 
 # Color Bulbs
-ND-mhled-NAME = MagicHome RGB LED
-ND-mhled-ICON = Lamp
+ND-magichomeled-NAME = MagicHome RGB LED
+ND-magichomeled-ICON = Lamp
 ST-mhledrgb-NAME = MagicHome LED
 ST-mhledrgb-ST-NAME = Brightness
 ST-mhledrgb-GV1-NAME = Red
@@ -28,8 +28,8 @@ CMD-mhledrgb-SET_RGB-NAME = Change RGB
 CMD-mhledrgb-SET_COLOR-NAME = Set Color To
 
 # Color and WW Bulbs
-ND-mhwwled-NAME = MagicHome RGBW LED
-ND-mhwwled-Icon = Lamp
+ND-magichomewwled-NAME = MagicHome RGBW LED
+ND-magichomewwled-Icon = Lamp
 ST-mhledww-NAME = MagicHome LED
 ST-mhledww-ST-NAME = Brightness
 ST-mhledww-GV1-NAME = Red
