@@ -14,20 +14,16 @@ This node server was rewritten from its original version to use the flux_led rep
 Same as most other ISY node servers:
 
 1. Backup ISY (just in case)
-2. Clone the MagicHome Node Server into the /.polyglot/nodeservers folder for the user that runs polyglot v2:
-  * `Assuming you're logged in as the user that runs polyglot, cd cd ~/.polyglot/nodeservers
-  * `git clone https://github.com/fahrer16/udi-magichome-poly.git
-3. Install pre-requisites using install.sh script
-  * 'chmod +x ./install.sh
-  * 'install.sh
-4. Add Node Server into Polyglot instance.
-  * Follow instructions here, starting with "Open Polyglot": https://github.com/Einstein42/udi-polyglotv2/wiki/Creating-a-NodeServer 
-
+2. Add Node Server into Polyglot v2 instance:
+  * Follow instructions here: https://github.com/Einstein42/udi-polyglotv2/wiki/Creating-a-NodeServer
+3. The nodeserver uses multicast discovery to discover compatible LED controllers on the local subnet.  The discovery process can sometimes miss bulbs, so the node server optionally allows adding static entries for LED's to be added despite discovery.  The format is as follows:
+  * Optional: Key starting with "led".  Value: {"ip":"192.168.0.84", "mac":"F0FEAF241937"}  "mac" is MAC address without ":"
+   
 The LED controllers should show the correct status now, hit "Query" if the status fields are empty.  The connection to the LED controllers drops out frequently for me (maybe my network or WiFi setup, maybe my code is flaky).  I've noticed using the MagicHome app while the node server is connected to the controllers causes the node server to lose connection.
 
 Known Issues:
 - Communication to the LED controllers seems flaky at times.  Preventing anything other than polyglot from communicating with the LED controllers seems to improve the issue.  I've done my testing with all LED controllers on an isolated VLAN without internet access.
-- The availability of Warm White controls is based on whether the LED controller reports it has WW LED capability, which doesn't mean there's a Warm White LED actually connected to the controller.
+- The availability of Warm White controls is based on whether the LED controller reports it has WW LED capability, which doesn't mean there's actually a Warm White LED actually connected to the controller.
  
 Version History:
 2.0.0: Rewritten for Polyglot v2.  Included support for Warm White LED's.  I need someone to test this since I don't have any Warm White LED's

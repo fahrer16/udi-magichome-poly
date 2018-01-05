@@ -10,7 +10,7 @@ from flux_led import BulbScanner, WifiLedBulb
 import sys
 import os
 import json
-
+import math
 
 LOGGER = polyinterface.LOGGER
 SERVERDATA = json.load(open('server.json'))
@@ -67,18 +67,19 @@ class Controller(polyinterface.Controller):
         self.discover()
 
     def longPoll(self):
-        pass
-        #for node in self.nodes:
-        #    self.nodes[node].longPoll()
+        self.query()
 
     def poll(self):
         pass
         #for node in self.nodes:
         #    self.nodes[node].poll()
 
-    def query(self):
+    def query(self, command=None):
         for node in self.nodes:
-            self.nodes[node].reportDrivers()
+            self.nodes[node].update_info()
+
+    def update_info(self):
+        pass #Nothing to update for controller
 
     def discover(self, *args, **kwargs):
         _success = False
@@ -95,17 +96,27 @@ class Controller(polyinterface.Controller):
             LOGGER.error('Error running magichome discovery (%s)', str(ex))
         
         try:
-            if 'controllers' not in self.polyConfig['customParams']:
-                if self.firstRun:
-                    LOGGER.info('No "controllers" key found in polyglot configuration, not adding any additional LED controllers')
-                    LOGGER.info('Note: A controllers key can be added to Polyglot configuration to add controllers regardless of discovery.  Value is in format of "[{\'ipaddr\': \'192.168.1.30\', \'id'': \'F0FEAF241937\'},{\'ipaddr\': \'192.168.1.90\', \'id\': \'F0FEAF92B115\'}]" where "id" is MAC address')
-            else:
-                _controllersConfig = self.polyConfig['customParams']['controllers']
-                LOGGER.info('Parsing custom controller configuration (%s)', str(_controllersConfig))
-                for d in _controllersConfig:
-                    self._addNode(d)
+            _items = 0
+            self.discoveryTries = 0
+            _params = self.polyConfig['customParams']
+            for key,value in _params.items():
+                _key = key.lower()
+                if _key.startswith('led'):
+                    _items += 1
+                    try:
+                        if 'ip' in value and 'mac' in value:
+                            _value = json.loads(value)
+                            _ip = _value['ip']
+                            _mac = _value['mac'].lower().replace(':','')
+                            d = {'ipaddr': _ip, 'id': _mac}
+                            self._addNode(d)
+                    except Exception as ex:
+                        LOGGER.error('Error adding node from Polyglot configuration (%s): %s', str(value), str(ex))
+            if _items == 0:
+                LOGGER.info('NOTE: LED Controllers can be specified for addition even if not detected via discovery.  Add a custom configuration parameter to Polyglot for each LED controller with a key starting with "LED".  The value should be in the following format, note the use of double quotes: {"ip":"192.168.0.84", "mac":"F0FEAF241937"}  "mac" is the MAC address without colons.')
         except Exception as ex:
-            LOGGER.error('Error parsing "controllers" configuration from polyglot: %s', str(ex))
+            LOGGER.error('Error processing custom node addition from Polyglot configuration: %s', str(ex))
+
         self.firstRun = False
         return _success
 
@@ -123,7 +134,7 @@ class Controller(polyinterface.Controller):
                     LOGGER.info('Adding new MagicHome RGB LED: %s(%s)', name, address)
                     self.addNode(MagicHomeLED(self, self.address, address, name, device = led))
             else:
-                LOGGING.debug('MagicHome LED with IP address "%s" and MAC address "%s" already in ISY', name, address)
+                LOGGER.debug('MagicHome LED with IP address "%s" and MAC address "%s" already in ISY', name, address)
                 return False
         except Exception as ex:
             LOGGER.error('Error adding Bulb: %s', str(ex))
@@ -140,191 +151,200 @@ class Controller(polyinterface.Controller):
 class MagicHomeLED(polyinterface.Node):
     def __init__(self, parent, primary, address, name, device):
         super().__init__(parent, primary, address, name)
+        self.brightness = 0
+        self.red = 0 
+        self.green = 0
+        self.blue = 0
+        self.white = 0
         self.device = device
 
     def start(self):
         LOGGER.info("%s MagicHome LED ready", self.address)
-        self.query()
+        self.update_info()
 
-    def setOn(self, command):
-        _value = command.get('value')
-        LOGGER.info('Received command to turn on %s.', self.name)
-        if _value is not None:
-            if _value == 0:
-                return self.setOff()
-            try:
-                if self.device.mode == 'color':
-                    _existing_color = self.device.getRgb()
-                    self.device.setRgb(self,_existing_color[0],_existing_color[1],_existing_color[2],_value)
-                elif device.mode == 'ww':
+    def setOn(self, command=None):
+        try:
+            LOGGER.info('Received command to turn on %s.', self.address)
+            _value = command.get('value')
+            
+            if _value is not None:
+                _value = int(_value)
+                if _value == 0:
+                    return self.setOff()
+                elif self.device.rgbwcapable:
                     _existing_color = self.device.getRgbw()
-                    self.device.setRgbw(self,_existing_color[0],_existing_color[1],_existing_color[2],_existing_color[3],_value)
+                    _max = max(_existing_color)
+                    _red = _existing_color[0] / _max * 255. * _value / 100.
+                    _green = _existing_color[1] / _max * 255. * _value / 100.
+                    _blue = _existing_color[2] / _max * 255. * _value / 100.
+                    _white = _existing_color[3] / _max * 255. * _value / 100.
+                    LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s, white=%s', str(_red), str(_green), str(_blue), str(_white))
+                    self.device.setRgbw(_red, _green, _blue, _white)
                 else:
-                    self.device.turnOn()
-            except Exception as ex:
-                LOGGER.error('Error turning on %s to %i. %s', self.name, _value, str(ex))
-        else:
-            try:
-                self.device.turnOn()
-            except Exception as ex:
-                LOGGER.error('Error turning on %s. %s', self.name, str(ex))
+                    _existing_color = self.device.getRgb()
+                    _max = max(_existing_color)
+                    _red = _existing_color[0] / _max * 255. * _value / 100.
+                    _green = _existing_color[1] / _max * 255. * _value / 100.
+                    _blue = _existing_color[2] / _max * 255. * _value / 100.
+                    LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s', str(_red), str(_green), str(_blue))
+                    self.device.setRgb(_red, _green, _blue)    
+        except Exception as ex:
+            LOGGER.error('Error turning on %s (command=%s). %s', self.address, str(command), str(ex))
+        
+        try:
+            self.device.turnOn()
+        except Exception as ex:
+            LOGGER.error('Error turning on %s. %s', self.address, str(ex))
         self.update_info()
         return True
 
-    def fastOn(self, command):
-        LOGGER.info('Received Fast On Command for %s', self.name)
-        return self.setOn(Value=100)
+    def fastOn(self, command=None):
+        LOGGER.info('Received Fast On Command for %s', self.address)
+        _cmd = {'value': 100}
+        return self.setOn(_cmd)
 
-    def setOff(self, command):
-        LOGGER.info('Received command to turn off %s.', self.name)
+    def setOff(self, command=None):
+        LOGGER.info('Received command to turn off %s.', self.address)
         try:
             self.device.turnOff()
             self.update_info()
         except Exception as ex:
-            LOGGER.error('Error turning off %s. %s', self.name, str(ex))
+            LOGGER.error('Error turning off %s. %s', self.address, str(ex))
         return True
 
-    def fastOff(self, command):
-        LOGGER.info('Received Fast Off Command for %s', self.name)
-        return self.setOff()
+    def fastOff(self, command=None):
+        LOGGER.info('Received Fast Off Command for %s', self.address)
+        return self.setOff(command)
 
     def setBrtDim(self, command):
         _cmd = command.get('cmd')
-        LOGGER.info('Received %s command on %s', str(_cmd), self.name)
+        LOGGER.info('Received %s command on %s', str(_cmd), self.address)
         try:
-            _existing_brightness = int(self.device.brightness / 255. * 100.) #get brightness as 0-100%
             if _cmd == 'BRT':
-                _brightness = _existing_brightness + 3
+                _brightness = self.brightness + 3
             else:
-                _brightness = _existing_brightness - 3
-            _brightness = int(_brightness / 100. * 255.) #convert brightness to 0-255
-            if _brightness <= 0: return self.setOff()
-
-            if self.device.mode == 'ww':
-                _existing_color = self.device.getRgbw()
-                self.device.setRgb(_existing_color[0],_existing_color[1],_existing_color[2],_existing_color[3],max(min(_brightness,255),0))
-            elif self.device.mode == 'color':
-                _existing_color = self.device.getRgb()
-                self.device.setRgb(_existing_color[0],_existing_color[1],_existing_color[2],max(min(_brightness,255),0))
-            if self.device.isOn: self.update_info() 
-            else: self.SetOn()
+                _brightness = self.brightness - 3
+            _brightness = max(min(brightness,100),0)
+            if _brightness == 0: 
+                return self.setOff()
+            else:
+                self.setOn(_brightness)
         except Exception as ex:
-            LOGGER.error('Error executing %s command on %s (%s)', str(_cmd), self.name, str(ex))
+            LOGGER.error('Error executing %s command on %s: %s', str(_cmd), self.address, str(ex))
             return False
         return True
 
     def setManual(self, command):
-        _cmd = command.get('cmd')
-        _val = int(command.get('value'))
-        if self.device.mode == 'color':
-            _existing_color = self.device.getRgb()
-            _existing_color[3] = 0
-        elif self.device.mode == 'ww':
-            _existing_color = self.device.getRgbw()
-        else:
-            _existing_color = [0,0,0,0]
-
-        _red = _val if _cmd == 'SETR' else _existing_color[0]
-        _green = _val if _cmd == 'SETG' else _existing_color[1]
-        _blue = _val if _cmd == 'SETB' else _existing_color[2]
-        _white = _val if _cmd == 'SETW' else _existing_color[3]
-        if (_red + _green + _blue + _white) ==  0: return self.setOff()
-        LOGGER.info('Received manual change, updating %s to: R:%i G:%i, B:%i, W:%i', self.name, _red, _green, _blue, _white)
         try:
-            if self.device.rgbwcapable and _white > 0:
+            LOGGER.info('Received manual change command for %s, %s', self.address, str(command))
+            _cmd = command.get('cmd')
+            _val = int(command.get('value'))
+            _red = _val if _cmd == 'SETR' else self.red
+            _green = _val if _cmd == 'SETG' else self.green
+            _blue = _val if _cmd == 'SETB' else self.blue
+
+            if self.device.rgbwcapable:
+                _white = _val if _cmd == 'SETW' else self.white
                 self.device.setRgbw(_red, _green, _blue, _white)
+                
             else:
-                self.device.setRgb(_red, _green, _blue)
-            if self.device.isOn: self.update_info() 
-            else: self.SetOn()
+                self.device.setRgb(r=_red, g=_green,b=_blue)
+            self.update_info() 
         except Exception as  ex: 
-            LOGGER.error('Error setting manual rgb on %s (cmd=%s, value=%s). %s', self.name, str(_cmd), str(_val), str(ex))
+            LOGGER.error('Error setting manual rgb on %s (cmd=%s, value=%s). %s', self.address, str(_cmd), str(_val), str(ex))
             return False
-        return True
+        return True        
 
     def setRGB(self, command):
-        _red = int(command.get('R.uom100'))
-        _green = int(command.get('G.uom100'))
-        _blue = int(command.get('B.uom100'))
-        if (_red + _green + _blue) <= 0: return self.setOff()
-        LOGGER.info('Received RGB Command, updating %s to: R:%i G:%i, B:%i', self.name, _red, _green, _blue)
         try:
+            _red = int(command.get('R.uom100'))
+            _green = int(command.get('G.uom100'))
+            _blue = int(command.get('B.uom100'))
+            if (_red + _green + _blue) <= 0: return self.setOff()
+            LOGGER.info('Received RGB Command, updating %s to: R:%i G:%i, B:%i', self.address, _red, _green, _blue)
             self.device.setRgb(_red, _green, _blue)
-            if self.device.isOn: self.update_info() 
-            else: self.SetOn()
+            self.update_info() 
         except Exception as  ex: 
-            LOGGER.error('Error setting RGB on %s (cmd=%s, value=%s). %s', self.name, str(_cmd), str(_val), str(ex))
+            LOGGER.error('Error setting RGB on %s (%s). %s', self.address, str(command), str(ex))
             return False
         return True
 
     def setColor(self, command):
-        _color = int(command.get('value'))
-        _pct_brightness = self.device.brightness / 255. #get brightness as 0-1
-        _red = int(COLORS[_color][1][0] * pct_brightness)
-        _green = int(COLORS[_color][1][1] * pct_brightness)
-        _blue = int(COLORS[_color][1][2] * pct_brightness)
-        if (_red + _green + _blue) == 0: return self.setOff()
         try:
+            _color = int(command.get('value'))
+            LOGGER.info('Received setColor command, changing %s color to %s', self.address, COLORS[_color][0])
+            _pct_brightness = self.brightness / 100. if self.brightness > 0 else 1 #get brightness as 0-1, default to 100% if the brightness is 0 (light off)
+            _red = int(COLORS[_color][1][0] * _pct_brightness)
+            _green = int(COLORS[_color][1][1] * _pct_brightness)
+            _blue = int(COLORS[_color][1][2] * _pct_brightness)
             self.device.setRgb(_red, _green, _blue)
-            if self.device.isOn: self.update_info() 
-            else: self.SetOn()
-            LOGGER.info('Received setColor command, changing %s color to %s', self.name, COLORS[_color][0])
+            self.update_info() 
         except Exception as  ex: 
-            LOGGER.error('Error seting color on %s to %s. %s', self.name, str(_color), str(ex))
+            LOGGER.error('Error seting color on %s (command = %s): %s', self.address, str(command), str(ex))
             return False
         return True
 
     def update_info(self):
-        #Update Mode:
-        _str_mode = self.device.mode
-        if _str_mode == 'off':
-            self.setDriver('GV5',0)
-        elif _str_mode == 'color':
-            self.setDriver('GV5',1)
-        elif _str_mode == 'ww':
-            self.setDriver('GV5',2)
-        elif _str_mode == 'custom':
-            self.setDriver('GV5',3)
-        elif _str_mode == 'preset':
-            self.setDriver('GV5',4)
-        elif _str_mode == 'sunrise':
-            self.setDriver('GV5',5)
-        elif _str_mode == 'sunset':
-            self.setDriver('GV5',6)
-        elif _str_mode == 'default':
-            self.setDriver('GV5',7)
-        else: #unknown
-            self.setDriver('GV5',8)
-
-        #Update Device Brightness
-        if self.device.isOn:
-            _brightness = int(self.device.brightness / 255.)
-            self.setDriver('ST', _brightness)
-        else:
-            self.setDriver('ST',0)
-
-        #Get Colors (if mode is 'color')
-        if _str_mode == 'color':
-            _color = self.device.getRgb()
-            self.setDriver('GV1', _color[0])
-            self.setDriver('GV2', _color[1])
-            self.setDriver('GV3', _color[2])
-        else:
-            self.setDriver('GV1', 0)
-            self.setDriver('GV2', 0)
-            self.setDriver('GV3', 0)
-
-
-    def query(self, command=""):
-        LOGGER.debug('Querying %s', self.name)
         try:
-            self.device.update_state()
-            self.update_info()
-            self.setDriver('GV4', True) #Connected
-            self.reportDrivers()
+            self.device.update_state() #query LED Controller
         except Exception as ex:
-            LOGGER.error('Error querying %s (%s)', self.name, str(ex))
-            self.setDriver('GV4', False) #Connected = False
+            LOGGER.error('Error updating device state for %s: %s', self.address, str(ex))
+            return False
+
+        try:           
+            #Update Mode:
+            _str_mode = self.device.mode
+            if _str_mode == 'off' or not self.device.is_on:
+                self.setDriver('GV5',0)
+                self.setDriver('ST',0)
+            elif _str_mode == 'color':
+                self.setDriver('GV5',1)
+                if self.device.rgbwcapable:
+                    _color = self.device.getRgbw()
+                    self.setDriver('GV1', _color[0])
+                    self.setDriver('GV2', _color[1])
+                    self.setDriver('GV3', _color[2])
+                    self.setDriver('GV6', _color[3])
+                    self.white = _color[3]
+                else:
+                    _color = self.device.getRgb()
+                    self.setDriver('GV1', _color[0])
+                    self.setDriver('GV2', _color[1])
+                    self.setDriver('GV3', _color[2])
+                self.red = _color[0]
+                self.green = _color[1]
+                self.blue = _color[2]
+                self.brightness = math.ceil(max(_color) / 255. * 100.)
+                self.setDriver('ST', self.brightness)
+            elif _str_mode == 'ww' and self.device.rgbwcapable:
+                self.setDriver('GV5',2)
+                _ww = self.device.getWarmWhite255() if self.device.mode == 'ww' else 0
+                self.setDriver('GV6', _ww)
+                _brightness = int(math.ceil(_ww / 255. * 100.))
+                self.setDriver('ST', _brightness)
+            #TODO: Support for the following modes is not yet fully implemented:
+            elif _str_mode == 'custom':
+                self.setDriver('GV5',3)
+            elif _str_mode == 'preset':
+                self.setDriver('GV5',4)
+            elif _str_mode == 'sunrise':
+                self.setDriver('GV5',5)
+            elif _str_mode == 'sunset':
+                self.setDriver('GV5',6)
+            elif _str_mode == 'default':
+                self.setDriver('GV5',7)
+            else: #unknown
+                self.setDriver('GV5',8)
+
+            self.setDriver('GV4', 1) #Connected
+        except Exception as ex:
+            LOGGER.error('Error updating device info for %s: %s', self.address, str(ex))
+            self.setDriver('GV4', 0) #Connected = False
+
+
+    def query(self, command=None):
+        LOGGER.debug('Querying %s', self.address)
+        self.update_info()
 
     def longPoll(self):
         self.query()
@@ -332,7 +352,6 @@ class MagicHomeLED(polyinterface.Node):
     def poll(self):
         pass
             
-
     drivers = [{'driver': 'ST', 'value': 0, 'uom': 51}, #BRIGHTNESS
                {'driver': 'GV1', 'value': 0, 'uom': 56}, #RED
                {'driver': 'GV2', 'value': 0, 'uom': 56}, #GREEN
@@ -357,77 +376,74 @@ class MagicHomeLED(polyinterface.Node):
 class MagicHomeWWLED(MagicHomeLED): #Extendard standard MagicHomeLED class to include support for Warm White-capable bulbs
    
     def update_info(self): #Extend standard MagicHomeLED update_info method to include warm white 
-        super()
-        _ww = self.device.getWarmWhite255() if _str_mode == 'ww' else 0
-        self.setDriver('GV6', _ww)
+        super().update_info()
+        
 
     def setTemperature(self, command):
         _temp = int(command.get('value'))
         #Check that temperature is proper and in correct range (2700K-6500K)
         if _temp is None:
-            LOGGER.error('Received Set Temperature Command on %s but no value supplied', self.name)
+            LOGGER.error('Received Set Temperature Command on %s but no value supplied', self.address)
             return False
         if (_temp < 2700 or temp > 6500): 
-            LOGGER.error('Received Set Temperature Command on %s but not within range of 2700-6500K (%i)', self.name, _temp)
+            LOGGER.error('Received Set Temperature Command on %s but not within range of 2700-6500K (%i)', self.address, _temp)
             return False
 
         #Check that bulb brightness is proper, if it's too low, set it to 100% (255)
-        _brightness = self.device.brightness
-        if _brightness <= 0:
-            _brightness = 255
+        _brightness = min(max(self.device.brightness / 100. * 255.,0),255)
+        if _brightness == 0: _brightness = 255
 
-        LOGGER.info('Received Set Temperature Command, updating %s to: %iK, brightness %i', self.name, _temp, _brightness)
+        LOGGER.info('Received Set Temperature Command, updating %s to: %iK, brightness %i', self.address, _temp, _brightness)
         try:
             self.device.setWhiteTemperature(_temp, _brightness)
-            if self.device.isOn: self.update_info() 
-            else: self.SetOn()
+            self.SetOn()
+            self.update_info()
         except Exception as  ex: 
-            LOGGER.error('Error setting Temperature on %s (cmd=%s, value=%s). %s', self.name, str(_cmd), str(_temp), str(ex))
+            LOGGER.error('Error setting Temperature on %s (%s). %s', self.address, str(command), str(ex))
             return False
         return True
 
     def setRGBW(self, command):
-        _red = int(command.get('R.uom100'))
-        _green = int(command.get('G.uom100'))
-        _blue = int(command.get('B.uom100'))
-        _white = int(command.get('W.uom100'))
-        if (_red + _green + _blue + _white) <= 0: return self.setOff()
-        LOGGER.info('Received RGBW Command, updating %s to: R:%i G:%i, B:%i, W:%i', self.name, _red, _green, _blue, _white)
         try:
+            _red = int(command.get('R.uom100'))
+            _green = int(command.get('G.uom100'))
+            _blue = int(command.get('B.uom100'))
+            _white = int(command.get('W.uom100'))
+            if (_red + _green + _blue + _white) <= 0: return self.setOff()
+            LOGGER.info('Received RGBW Command, updating %s to: R:%i G:%i, B:%i, W:%i', self.address, _red, _green, _blue, _white)
             self.device.setRgbw(_red, _green, _blue, _white)
-            if self.device.isOn: self.update_info() 
-            else: self.SetOn()
+            self.update_info() 
         except Exception as  ex: 
-            LOGGER.error('Error setting RGBW on %s (cmd=%s, value=%s). %s', self.name, str(_cmd), str(_val), str(ex))
+            LOGGER.error('Error setting RGBW on %s (%s). %s', self.address, str(command), str(ex))
             return False
         return True
 
-    def setOn(self, command):
-        super().setOn(self,command)
+    def setOn(self, command=None):
+        super().setOn(command)
 
-    def setOff(self, command):
-        super().setOff(self,command)
+    def setOff(self, command=None):
+        super().setOff(command)
 
-    def fastOn(self, command):
-        super().fastOn(self,command)
+    def fastOn(self, command=None):
+        super().fastOn(command)
 
-    def fastOff(self, command):
-        super().fastOff(self,command)
+    def fastOff(self, command=None):
+        super().fastOff(command)
 
-    def query(self, command):
-        super().query(self, command)
+    def query(self, command=None):
+        super().query(command)
 
-    def setBrtDim(self, command):
-        super().query(self, command)
+    def setBrtDim(self, command=None):
+        super().setBrtDim(command)
 
     def setColor(self, command):
-        super().query(self, command)
+        super().setColor(command)
 
     def setManual(self, command):
-        super().setManual(self, command)
+        super().setManual(command)
 
     def setRGB(self, command):
-        super().setRGB(self, command)
+        super().setRGB(command)
 
     def longPoll(self):
         super().longPoll(self)
@@ -439,7 +455,7 @@ class MagicHomeWWLED(MagicHomeLED): #Extendard standard MagicHomeLED class to in
                {'driver': 'GV1', 'value': 0, 'uom': 56}, #RED
                {'driver': 'GV2', 'value': 0, 'uom': 56}, #GREEN
                {'driver': 'GV3', 'value': 0, 'uom': 56}, #BLUE
-               {'driver': 'GV3', 'value': 0, 'uom': 56}, #WHITE
+               {'driver': 'GV6', 'value': 0, 'uom': 56}, #WHITE
                {'driver': 'GV4', 'value': 0, 'uom': 2}, #Connected
                {'driver': 'GV5', 'value': 8, 'uom': 25} #Mode (Index)
               ]
