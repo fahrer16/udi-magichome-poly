@@ -1,6 +1,6 @@
 <editors>
   <editor id="mhbool">
-    <range uom="2"/>
+    <range uom="2" subset="0,1"/>
   </editor>
   <editor id="mhledc">
     <range uom="56" min="0" max="255" prec="0" step="1"/>

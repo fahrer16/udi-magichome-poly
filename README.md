@@ -26,4 +26,5 @@ Known Issues:
 - The availability of Warm White controls is based on whether the LED controller reports it has WW LED capability, which doesn't mean there's actually a Warm White LED actually connected to the controller.
  
 Version History:
-2.0.0: Rewritten for Polyglot v2.  Included support for Warm White LED's.  I need someone to test this since I don't have any Warm White LED's
+* 2.0.0: Rewritten for Polyglot v2.  Included support for Warm White LED's.  I need someone to test this since I don't have any Warm White LED's
+* 2.0.1: Corrected "mhbool" definition in editor profile
