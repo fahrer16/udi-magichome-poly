@@ -257,9 +257,10 @@ class MagicHomeLED(polyinterface.Node):
 
     def setRGB(self, command):
         try:
-            _red = int(command.get('R.uom100'))
-            _green = int(command.get('G.uom100'))
-            _blue = int(command.get('B.uom100'))
+            _query = command.get('query')
+            _red = int(_query.get('R.uom56'))
+            _green = int(_query.get('G.uom56'))
+            _blue = int(_query.get('B.uom56'))
             if (_red + _green + _blue) <= 0: return self.setOff()
             LOGGER.info('Received RGB Command, updating %s to: R:%i G:%i, B:%i', self.address, _red, _green, _blue)
             self.device.setRgb(_red, _green, _blue)
@@ -405,10 +406,11 @@ class MagicHomeWWLED(MagicHomeLED): #Extendard standard MagicHomeLED class to in
 
     def setRGBW(self, command):
         try:
-            _red = int(command.get('R.uom100'))
-            _green = int(command.get('G.uom100'))
-            _blue = int(command.get('B.uom100'))
-            _white = int(command.get('W.uom100'))
+            _query = command.get('query')
+            _red = int(_query.get('R.uom56'))
+            _green = int(_query.get('G.uom56'))
+            _blue = int(_query.get('B.uom56'))
+            _white = int(_query.get('W.uom56'))
             if (_red + _green + _blue + _white) <= 0: return self.setOff()
             LOGGER.info('Received RGBW Command, updating %s to: R:%i G:%i, B:%i, W:%i', self.address, _red, _green, _blue, _white)
             self.device.setRgbw(_red, _green, _blue, _white)
