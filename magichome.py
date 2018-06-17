@@ -11,10 +11,14 @@ import sys
 import os
 import json
 import math
+import threading
 
 LOGGER = polyinterface.LOGGER
-SERVERDATA = json.load(open('server.json'))
+CONFIG_FILE = open('server.json')
+SERVERDATA = json.load(CONFIG_FILE)
+CONFIG_FILE.close()
 VERSION = SERVERDATA['credits'][0]['version']
+UPDATE_DELAY = 1.0
 
 # Changing these will not update the ISY names and labels, you will have to edit the profile.
 COLORS = {
@@ -116,6 +120,16 @@ class Controller(polyinterface.Controller):
                 LOGGER.info('NOTE: LED Controllers can be specified for addition even if not detected via discovery.  Add a custom configuration parameter to Polyglot for each LED controller with a key starting with "LED".  The value should be in the following format, note the use of double quotes: {"ip":"192.168.0.84", "mac":"F0FEAF241937"}  "mac" is the MAC address without colons.')
         except Exception as ex:
             LOGGER.error('Error processing custom node addition from Polyglot configuration: %s', str(ex))
+            
+        try:
+            _params = self.polyConfig['customParams']
+            global UPDATE_DELAY
+            if 'delay' in _params:
+                UPDATE_DELAY = float(_params['delay'])
+            else:
+                LOGGER.info("NOTE: A delay can be specified to wait a bit for the LED controller to process commands before querying them to update the controller's state in the ISY.  Defaults to %s sec.", str(UPDATE_DELAY))
+        except Exception as ex:
+            LOGGER.error('Error obtaining device delay value from Polyglot configuration: %s',str(ex))
 
         self.firstRun = False
         return _success
@@ -195,7 +209,10 @@ class MagicHomeLED(polyinterface.Node):
             self.device.turnOn()
         except Exception as ex:
             LOGGER.error('Error turning on %s. %s', self.address, str(ex))
-        self.update_info()
+        
+        timer = threading.Timer(UPDATE_DELAY, self.update_info)
+        timer.start()
+        
         return True
 
     def fastOn(self, command=None):
@@ -207,7 +224,10 @@ class MagicHomeLED(polyinterface.Node):
         LOGGER.info('Received command to turn off %s.', self.address)
         try:
             self.device.turnOff()
-            self.update_info()
+            
+            timer = threading.Timer(UPDATE_DELAY, self.update_info)
+            timer.start()
+        
         except Exception as ex:
             LOGGER.error('Error turning off %s. %s', self.address, str(ex))
         return True
@@ -249,7 +269,9 @@ class MagicHomeLED(polyinterface.Node):
                 
             else:
                 self.device.setRgb(r=_red, g=_green,b=_blue)
-            self.update_info() 
+                
+            timer = threading.Timer(UPDATE_DELAY, self.update_info)
+            timer.start() 
         except Exception as  ex: 
             LOGGER.error('Error setting manual rgb on %s (cmd=%s, value=%s). %s', self.address, str(_cmd), str(_val), str(ex))
             return False
@@ -264,7 +286,9 @@ class MagicHomeLED(polyinterface.Node):
             if (_red + _green + _blue) <= 0: return self.setOff()
             LOGGER.info('Received RGB Command, updating %s to: R:%i G:%i, B:%i', self.address, _red, _green, _blue)
             self.device.setRgb(_red, _green, _blue)
-            self.update_info() 
+            
+            timer = threading.Timer(UPDATE_DELAY, self.update_info)
+            timer.start()
         except Exception as  ex: 
             LOGGER.error('Error setting RGB on %s (%s). %s', self.address, str(command), str(ex))
             return False
@@ -279,7 +303,9 @@ class MagicHomeLED(polyinterface.Node):
             _green = int(COLORS[_color][1][1] * _pct_brightness)
             _blue = int(COLORS[_color][1][2] * _pct_brightness)
             self.device.setRgb(_red, _green, _blue)
-            self.update_info() 
+            
+            timer = threading.Timer(UPDATE_DELAY, self.update_info)
+            timer.start()
         except Exception as  ex: 
             LOGGER.error('Error seting color on %s (command = %s): %s', self.address, str(command), str(ex))
             return False
@@ -374,7 +400,7 @@ class MagicHomeLED(polyinterface.Node):
                     'SET_RGB': setRGB
                 }
 
-class MagicHomeWWLED(MagicHomeLED): #Extendard standard MagicHomeLED class to include support for Warm White-capable bulbs
+class MagicHomeWWLED(MagicHomeLED): #Extended standard MagicHomeLED class to include support for Warm White-capable bulbs
    
     def update_info(self): #Extend standard MagicHomeLED update_info method to include warm white 
         super().update_info()
@@ -398,7 +424,9 @@ class MagicHomeWWLED(MagicHomeLED): #Extendard standard MagicHomeLED class to in
         try:
             self.device.setWhiteTemperature(_temp, _brightness)
             self.SetOn()
-            self.update_info()
+            
+            timer = threading.Timer(UPDATE_DELAY, self.update_info)
+            timer.start()
         except Exception as  ex: 
             LOGGER.error('Error setting Temperature on %s (%s). %s', self.address, str(command), str(ex))
             return False
@@ -414,7 +442,9 @@ class MagicHomeWWLED(MagicHomeLED): #Extendard standard MagicHomeLED class to in
             if (_red + _green + _blue + _white) <= 0: return self.setOff()
             LOGGER.info('Received RGBW Command, updating %s to: R:%i G:%i, B:%i, W:%i', self.address, _red, _green, _blue, _white)
             self.device.setRgbw(_red, _green, _blue, _white)
-            self.update_info() 
+            
+            timer = threading.Timer(UPDATE_DELAY, self.update_info)
+            timer.start()
         except Exception as  ex: 
             LOGGER.error('Error setting RGBW on %s (%s). %s', self.address, str(command), str(ex))
             return False

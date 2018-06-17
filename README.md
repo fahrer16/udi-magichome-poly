@@ -18,6 +18,7 @@ Same as most other ISY node servers:
   * Follow instructions here: https://github.com/Einstein42/udi-polyglotv2/wiki/Creating-a-NodeServer
 3. The nodeserver uses multicast discovery to discover compatible LED controllers on the local subnet.  The discovery process can sometimes miss bulbs, so the node server optionally allows adding static entries for LED's to be added despite discovery.  The format is as follows:
   * Optional: Key starting with "led".  Value: {"ip":"192.168.0.84", "mac":"F0FEAF241937"}  "mac" is MAC address without ":"
+  * Optional: Key: "delay".  Value: float corresponding to desired delay, in seconds, between issuance of command to controller and querying controller status.  Defaults to 1.0 seconds.
    
 The LED controllers should show the correct status now, hit "Query" if the status fields are empty.  The connection to the LED controllers drops out frequently for me (maybe my network or WiFi setup, maybe my code is flaky).  I've noticed using the MagicHome app while the node server is connected to the controllers causes the node server to lose connection.
 
@@ -28,3 +29,4 @@ Known Issues:
 Version History:
 * 2.0.0: Rewritten for Polyglot v2.  Included support for Warm White LED's.  I need someone to test this since I don't have any Warm White LED's
 * 2.0.1: Corrected "mhbool" definition in editor profile
+* 2.0.3: Added delay before querying controller status following issuance of a command.  Added closure of server.json file after reading.
