@@ -12,8 +12,8 @@
     {
       "title": "MagicHome LED Node Server",
       "author": "Brian Feeney (fahrer16)",
-      "version": "2.0.3",
-      "date": "June 17, 2018",
+      "version": "2.0.4",
+      "date": "June 28, 2018",
       "source": "https://github.com/fahrer16/udi-magichome-poly",
       "license": "https://github.com/fahrer16/udi-magichome-poly/blob/master/LICENSE"
     }

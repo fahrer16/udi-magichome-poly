@@ -19,6 +19,7 @@ SERVERDATA = json.load(CONFIG_FILE)
 CONFIG_FILE.close()
 VERSION = SERVERDATA['credits'][0]['version']
 UPDATE_DELAY = 1.0
+QUERY_BEFORE_CMD = False
 
 # Changing these will not update the ISY names and labels, you will have to edit the profile.
 COLORS = {
@@ -130,6 +131,14 @@ class Controller(polyinterface.Controller):
                 LOGGER.info("NOTE: A delay can be specified to wait a bit for the LED controller to process commands before querying them to update the controller's state in the ISY.  Defaults to %s sec.", str(UPDATE_DELAY))
         except Exception as ex:
             LOGGER.error('Error obtaining device delay value from Polyglot configuration: %s',str(ex))
+        
+        try:
+            _params = self.polyConfig['customParams']
+            global QUERY_BEFORE_CMD
+            if 'query_before_cmd' in _params:
+                QUERY_BEFORE_CMD = bool(_params['query_before_cmd'])
+        except Exception as ex:
+            LOGGER.error('Error obtaining query_before_cmd flag from Polyglot configuration: %s',str(ex))
 
         self.firstRun = False
         return _success
@@ -181,6 +190,8 @@ class MagicHomeLED(polyinterface.Node):
             LOGGER.info('Received command to turn on %s.', self.address)
             _value = command.get('value')
             
+            if QUERY_BEFORE_CMD: self.update_info()
+            
             if _value is not None:
                 _value = int(_value)
                 if _value == 0:
@@ -222,6 +233,7 @@ class MagicHomeLED(polyinterface.Node):
 
     def setOff(self, command=None):
         LOGGER.info('Received command to turn off %s.', self.address)
+        if QUERY_BEFORE_CMD: self.update_info()
         try:
             self.device.turnOff()
             
@@ -257,11 +269,14 @@ class MagicHomeLED(polyinterface.Node):
     def setManual(self, command):
         try:
             LOGGER.info('Received manual change command for %s, %s', self.address, str(command))
+            if QUERY_BEFORE_CMD: self.update_info()
             _cmd = command.get('cmd')
             _val = int(command.get('value'))
             _red = _val if _cmd == 'SETR' else self.red
             _green = _val if _cmd == 'SETG' else self.green
             _blue = _val if _cmd == 'SETB' else self.blue
+            
+            if (_red + _green + _blue) <= 0: return self.setOff() 
 
             if self.device.rgbwcapable:
                 _white = _val if _cmd == 'SETW' else self.white
@@ -269,7 +284,7 @@ class MagicHomeLED(polyinterface.Node):
                 
             else:
                 self.device.setRgb(r=_red, g=_green,b=_blue)
-                
+                          
             timer = threading.Timer(UPDATE_DELAY, self.update_info)
             timer.start() 
         except Exception as  ex: 
@@ -279,6 +294,7 @@ class MagicHomeLED(polyinterface.Node):
 
     def setRGB(self, command):
         try:
+            if QUERY_BEFORE_CMD: self.update_info()
             _query = command.get('query')
             _red = int(_query.get('R.uom56'))
             _green = int(_query.get('G.uom56'))
@@ -286,6 +302,7 @@ class MagicHomeLED(polyinterface.Node):
             if (_red + _green + _blue) <= 0: return self.setOff()
             LOGGER.info('Received RGB Command, updating %s to: R:%i G:%i, B:%i', self.address, _red, _green, _blue)
             self.device.setRgb(_red, _green, _blue)
+            self.device.turnOn()
             
             timer = threading.Timer(UPDATE_DELAY, self.update_info)
             timer.start()
@@ -296,6 +313,7 @@ class MagicHomeLED(polyinterface.Node):
 
     def setColor(self, command):
         try:
+            if QUERY_BEFORE_CMD: self.update_info()
             _color = int(command.get('value'))
             LOGGER.info('Received setColor command, changing %s color to %s', self.address, COLORS[_color][0])
             _pct_brightness = self.brightness / 100. if self.brightness > 0 else 1 #get brightness as 0-1, default to 100% if the brightness is 0 (light off)
@@ -407,6 +425,7 @@ class MagicHomeWWLED(MagicHomeLED): #Extended standard MagicHomeLED class to inc
         
 
     def setTemperature(self, command):
+        if QUERY_BEFORE_CMD: self.update_info()
         _temp = int(command.get('value'))
         #Check that temperature is proper and in correct range (2700K-6500K)
         if _temp is None:
@@ -434,6 +453,7 @@ class MagicHomeWWLED(MagicHomeLED): #Extended standard MagicHomeLED class to inc
 
     def setRGBW(self, command):
         try:
+            if QUERY_BEFORE_CMD: self.update_info()
             _query = command.get('query')
             _red = int(_query.get('R.uom56'))
             _green = int(_query.get('G.uom56'))
@@ -442,6 +462,7 @@ class MagicHomeWWLED(MagicHomeLED): #Extended standard MagicHomeLED class to inc
             if (_red + _green + _blue + _white) <= 0: return self.setOff()
             LOGGER.info('Received RGBW Command, updating %s to: R:%i G:%i, B:%i, W:%i', self.address, _red, _green, _blue, _white)
             self.device.setRgbw(_red, _green, _blue, _white)
+            self.device.turnOn()
             
             timer = threading.Timer(UPDATE_DELAY, self.update_info)
             timer.start()

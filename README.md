@@ -19,6 +19,7 @@ Same as most other ISY node servers:
 3. The nodeserver uses multicast discovery to discover compatible LED controllers on the local subnet.  The discovery process can sometimes miss bulbs, so the node server optionally allows adding static entries for LED's to be added despite discovery.  The format is as follows:
   * Optional: Key starting with "led".  Value: {"ip":"192.168.0.84", "mac":"F0FEAF241937"}  "mac" is MAC address without ":"
   * Optional: Key: "delay".  Value: float corresponding to desired delay, in seconds, between issuance of command to controller and querying controller status.  Defaults to 1.0 seconds.
+  * Optional: Key: "query_before_cmd".  Value: True or False.  Defaults to False.  When True, queries device immediately prior to issuing each command.
    
 The LED controllers should show the correct status now, hit "Query" if the status fields are empty.  The connection to the LED controllers drops out frequently for me (maybe my network or WiFi setup, maybe my code is flaky).  I've noticed using the MagicHome app while the node server is connected to the controllers causes the node server to lose connection.
 
@@ -30,3 +31,4 @@ Version History:
 * 2.0.0: Rewritten for Polyglot v2.  Included support for Warm White LED's.  I need someone to test this since I don't have any Warm White LED's
 * 2.0.1: Corrected "mhbool" definition in editor profile
 * 2.0.3: Added delay before querying controller status following issuance of a command.  Added closure of server.json file after reading.
+* 2.0.4: Modified behavior of "Change RGB" and "Change RGBW" commands to turn on controller.  Previously, command only changed color.  Change made to allow command to be used in scenes.  Also added "query_before_cmd" key; when set to True the status of the device will be queried immediately prior to issuing each command.  Feature introduced for user that indicated devices were not responding to commands reliably.
