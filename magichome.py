@@ -29,7 +29,7 @@ COLORS = {
 	3: ['GREEN', [0,255,0]],
 	4: ['CYAN', [0,255,255]],
 	5: ['BLUE', [0,0,255]],
-	6: ['PURPLE', [160,32,240]],
+	6: ['PURPLE', [255,0,255]],#Updated 12Jan2020 to have a better color for purple
 	7: ['PINK', [255,192,203]],
 	8: ['WHITE', [255,255,255]],
 	9: ['COLD_WHTE', [201,226,255]],
@@ -203,7 +203,7 @@ class MagicHomeLED(polyinterface.Node):
                     _green = _existing_color[1] / _max * 255. * _value / 100.
                     _blue = _existing_color[2] / _max * 255. * _value / 100.
                     _white = _existing_color[3] / _max * 255. * _value / 100.
-                    LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s, white=%s', str(_red), str(_green), str(_blue), str(_white))
+                    LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s, white=%s', self.address, str(_red), str(_green), str(_blue), str(_white)) #21Jan2020 Added self.address
                     self.device.setRgbw(_red, _green, _blue, _white)
                 else:
                     _existing_color = self.device.getRgb()
@@ -211,7 +211,7 @@ class MagicHomeLED(polyinterface.Node):
                     _red = _existing_color[0] / _max * 255. * _value / 100.
                     _green = _existing_color[1] / _max * 255. * _value / 100.
                     _blue = _existing_color[2] / _max * 255. * _value / 100.
-                    LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s', str(_red), str(_green), str(_blue))
+                    LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s', self.address, str(_red), str(_green), str(_blue)) #21Jan2020 Added self.address
                     self.device.setRgb(_red, _green, _blue)    
         except Exception as ex:
             LOGGER.error('Error turning on %s (command=%s). %s', self.address, str(command), str(ex))
