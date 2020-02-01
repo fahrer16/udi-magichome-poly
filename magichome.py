@@ -343,15 +343,10 @@ class MagicHomeLED(polyinterface.Node):
             _color = int(command.get('value'))
             LOGGER.info('Received setColor command, changing %s color to %s', self.address, COLORS[_color][0])
             _pct_brightness = self.brightness / 100. if self.brightness > 0 else 1 #get brightness as 0-1, default to 100% if the brightness is 0 (light off)
-            if _color == 9:#COLD WHITE
-                self.setCW({'value': int(_pct_brightness * 255.)})
-            elif _color == 10:#WARM WHITE
-                self.setWW({'value': int(_pct_brightness * 255.)})
-            else:
-                _red = int(COLORS[_color][1][0] * _pct_brightness)
-                _green = int(COLORS[_color][1][1] * _pct_brightness)
-                _blue = int(COLORS[_color][1][2] * _pct_brightness)
-                self.device.setRgb(_red, _green, _blue)
+            _red = int(COLORS[_color][1][0] * _pct_brightness)
+            _green = int(COLORS[_color][1][1] * _pct_brightness)
+            _blue = int(COLORS[_color][1][2] * _pct_brightness)
+            self.device.setRgb(_red, _green, _blue)
             
             timer = threading.Timer(UPDATE_DELAY, self.update_info)
             timer.start()
