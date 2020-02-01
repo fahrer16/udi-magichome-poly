@@ -16,7 +16,8 @@ ST-mhled-GV2-NAME = Green
 ST-mhled-GV3-NAME = Blue
 ST-mhled-GV4-NAME = Connected
 ST-mhled-GV5-NAME = Mode
-ST-mhled-GV6-NAME = White
+ST-mhled-GV6-NAME = Warm White
+ST-mhled-GV7-NAME = Cold White
 CMD-mhled-DON-NAME = On
 CMD-mhled-DOF-NAME = Off
 CMD-mhled-DFOF-NAME = Fast Off
@@ -28,6 +29,8 @@ CMD-mhled-SETR-NAME = Set Red
 CMD-mhled-SETG-NAME = Set Green
 CMD-mhled-SETB-NAME = Set Blue
 CMD-mhled-SETW-NAME = Set White
+CMD-mhled-SETWW-NAME = Set Warm White
+CMD-mhled-SETCW-NAME = Set Cold White
 CMD-mhled-SET_RGB-NAME = Change RGB
 CMD-mhled-SET_RGBW-NAME = Change RGBW
 CMD-mhled-SET_COLOR-NAME = Set Color To
@@ -55,6 +58,7 @@ MODE_STATUS-5 = Sunrise
 MODE_STATUS-6 = Sunset
 MODE_STATUS-7 = Default
 MODE_STATUS-8 = Unknown
+MODE_STATUS-9 = Cold White
 
 #Generic for all Types
 CMDP-R-NAME = Red

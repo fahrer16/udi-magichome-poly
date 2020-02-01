@@ -150,9 +150,10 @@ class Controller(polyinterface.Controller):
             address = address[-14:]
             if address not in self.nodes:
                 led = WifiLedBulb(d['ipaddr'])
+                LOGGER.info('flux_led protocol version = %s',str(led.flux_led_version))
                 if led.rgbwcapable:
                     LOGGER.info('Adding new MagicHome RGBW LED: %s(%s)', name, address)
-                    self.addNode(MagicHomeWWLED(self, self.address, address, name, device = led))
+                    self.addNode(MagicHomeLED(self, self.address, address, name, device = led)) #Two node types merged, both kept herein for backwards compatability BF 30Jan2020
                 else:
                     LOGGER.info('Adding new MagicHome RGB LED: %s(%s)', name, address)
                     self.addNode(MagicHomeLED(self, self.address, address, name, device = led))
@@ -179,6 +180,7 @@ class MagicHomeLED(polyinterface.Node):
         self.green = 0
         self.blue = 0
         self.white = 0
+        self.white2 = 0
         self.device = device
 
     def start(self):
@@ -194,25 +196,38 @@ class MagicHomeLED(polyinterface.Node):
             
             if _value is not None:
                 _value = int(_value)
+                _str_mode = self.device.mode
                 if _value == 0:
                     return self.setOff()
-                elif self.device.rgbwcapable:
-                    _existing_color = self.device.getRgbw()
-                    _max = max(_existing_color)
-                    _red = _existing_color[0] / _max * 255. * _value / 100.
-                    _green = _existing_color[1] / _max * 255. * _value / 100.
-                    _blue = _existing_color[2] / _max * 255. * _value / 100.
-                    _white = _existing_color[3] / _max * 255. * _value / 100.
-                    LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s, white=%s', self.address, str(_red), str(_green), str(_blue), str(_white)) #21Jan2020 Added self.address
-                    self.device.setRgbw(_red, _green, _blue, _white)
-                else:
-                    _existing_color = self.device.getRgb()
-                    _max = max(_existing_color)
-                    _red = _existing_color[0] / _max * 255. * _value / 100.
-                    _green = _existing_color[1] / _max * 255. * _value / 100.
-                    _blue = _existing_color[2] / _max * 255. * _value / 100.
-                    LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s', self.address, str(_red), str(_green), str(_blue)) #21Jan2020 Added self.address
-                    self.device.setRgb(_red, _green, _blue)    
+                elif (self.red + self.green + self.blue) > 0:
+                    if self.device.rgbwcapable:
+                        _existing_color = self.device.getRgbw()
+                        _max = max(_existing_color)
+                        _red = int(_existing_color[0] / _max * 255. * _value / 100.)
+                        _green = int(_existing_color[1] / _max * 255. * _value / 100.)
+                        _blue = int(_existing_color[2] / _max * 255. * _value / 100.)
+                        _white = int(_existing_color[3] / _max * 255. * _value / 100.)
+                        LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s, white=%s', self.address, str(_red), str(_green), str(_blue), str(_white)) 
+                        self.device.setRgbw(_red, _green, _blue, _white)
+                    else:
+                        _existing_color = self.device.getRgb()
+                        _max = max(_existing_color)
+                        _red = int(_existing_color[0] / _max * 255. * _value / 100.)
+                        _green = int(_existing_color[1] / _max * 255. * _value / 100.)
+                        _blue = int(_existing_color[2] / _max * 255. * _value / 100.)
+                        LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s', self.address, str(_red), str(_green), str(_blue)) #21Jan2020 Added self.address
+                        self.device.setRgb(_red, _green, _blue)
+                elif self.white > 0 and self.white2 > 0:
+                    _newWhite = int(self.white / _max * 255. * _value / 100.)
+                    _newWhite2 = int(self.white2 / _max * 255. * _value / 100.)
+                    self.device.setRgbw(w=_newWhite,w2=newWhite2)
+                elif self.white > 0 and self.white2 <= 0:
+                    self.setWW({'value': int(255. * _value / 100.)})
+                elif self.white <= 0 and self.white2 > 0:
+                    self.setCW({'value': int(255. * _value / 100.)})
+            else:
+                LOGGER.debug('On command received for %s but no value supplied', self.address) 
+                    
         except Exception as ex:
             LOGGER.error('Error turning on %s (command=%s). %s', self.address, str(command), str(ex))
         
@@ -246,7 +261,7 @@ class MagicHomeLED(polyinterface.Node):
 
     def fastOff(self, command=None):
         LOGGER.info('Received Fast Off Command for %s', self.address)
-        return self.setOff(command)
+        return self.setOff(0)
 
     def setBrtDim(self, command):
         _cmd = command.get('cmd')
@@ -302,7 +317,7 @@ class MagicHomeLED(polyinterface.Node):
             if (_red + _green + _blue) <= 0: return self.setOff()
             LOGGER.info('Received RGB Command, updating %s to: R:%i G:%i, B:%i', self.address, _red, _green, _blue)
             self.device.setRgb(_red, _green, _blue)
-            self.device.turnOn()
+            #self.device.turnOn()
             
             timer = threading.Timer(UPDATE_DELAY, self.update_info)
             timer.start()
@@ -317,10 +332,15 @@ class MagicHomeLED(polyinterface.Node):
             _color = int(command.get('value'))
             LOGGER.info('Received setColor command, changing %s color to %s', self.address, COLORS[_color][0])
             _pct_brightness = self.brightness / 100. if self.brightness > 0 else 1 #get brightness as 0-1, default to 100% if the brightness is 0 (light off)
-            _red = int(COLORS[_color][1][0] * _pct_brightness)
-            _green = int(COLORS[_color][1][1] * _pct_brightness)
-            _blue = int(COLORS[_color][1][2] * _pct_brightness)
-            self.device.setRgb(_red, _green, _blue)
+            if _color == 9:#COLD WHITE
+                self.setCW({'value': int(_pct_brightness * 255.)})
+            elif _color == 10:#WARM WHITE
+                self.setWW({'value': int(_pct_brightness * 255.)})
+            else:
+                _red = int(COLORS[_color][1][0] * _pct_brightness)
+                _green = int(COLORS[_color][1][1] * _pct_brightness)
+                _blue = int(COLORS[_color][1][2] * _pct_brightness)
+                self.device.setRgb(_red, _green, _blue)
             
             timer = threading.Timer(UPDATE_DELAY, self.update_info)
             timer.start()
@@ -356,17 +376,36 @@ class MagicHomeLED(polyinterface.Node):
                     self.setDriver('GV1', _color[0])
                     self.setDriver('GV2', _color[1])
                     self.setDriver('GV3', _color[2])
+                    #self.setDriver('GV6',0)
+                    #self.setDriver('GV7',0)
                 self.red = _color[0]
                 self.green = _color[1]
                 self.blue = _color[2]
+                try:
+                    #try getting the value of white 2 (cold white), if it exists:
+                    _color = self.device.getRgbww()
+                    self.setDriver('GV7', _color[4])
+                    self.white2 = 0
+                except:
+                    self.setDriver('GV7',0)
                 self.brightness = math.ceil(max(_color) / 255. * 100.)
                 self.setDriver('ST', self.brightness)
-            elif _str_mode == 'ww' and self.device.rgbwcapable:
+            elif _str_mode == 'ww':
                 self.setDriver('GV5',2)
                 _ww = self.device.getWarmWhite255() if self.device.mode == 'ww' else 0
+                self.white = _ww
                 self.setDriver('GV6', _ww)
                 _brightness = int(math.ceil(_ww / 255. * 100.))
+                self.brightness = _brightness
                 self.setDriver('ST', _brightness)
+                self.setDriver('GV1', 0)
+                self.setDriver('GV2', 0)
+                self.setDriver('GV3', 0)
+                self.setDriver('GV7',0)
+                self.red = 0
+                self.green = 0
+                self.blue = 0
+                self.white2 = 0
             #TODO: Support for the following modes is not yet fully implemented:
             elif _str_mode == 'custom':
                 self.setDriver('GV5',3)
@@ -385,45 +424,7 @@ class MagicHomeLED(polyinterface.Node):
         except Exception as ex:
             LOGGER.error('Error updating device info for %s: %s', self.address, str(ex))
             self.setDriver('GV4', 0) #Connected = False
-
-
-    def query(self, command=None):
-        LOGGER.debug('Querying %s', self.address)
-        self.update_info()
-
-    def longPoll(self):
-        self.query()
-
-    def poll(self):
-        pass
-            
-    drivers = [{'driver': 'ST', 'value': 0, 'uom': 51}, #BRIGHTNESS
-               {'driver': 'GV1', 'value': 0, 'uom': 56}, #RED
-               {'driver': 'GV2', 'value': 0, 'uom': 56}, #GREEN
-               {'driver': 'GV3', 'value': 0, 'uom': 56}, #BLUE
-               {'driver': 'GV4', 'value': 0, 'uom': 2}, #Connected
-               {'driver': 'GV5', 'value': 8, 'uom': 25} #Mode (Index)
-              ]
-
-    id = 'magichomeled'
-    commands = {
-                    'DON': setOn, 
-                    'DOF': setOff, 
-                    'DFON': fastOn, 
-                    'DFOF': fastOff, 
-                    'QUERY': query,
-                    'BRT': setBrtDim, 'DIM': setBrtDim, 
-                    'SET_COLOR': setColor, 
-                    'SETR': setManual, 'SETG': setManual, 'SETB': setManual, 
-                    'SET_RGB': setRGB
-                }
-
-class MagicHomeWWLED(MagicHomeLED): #Extended standard MagicHomeLED class to include support for Warm White-capable bulbs
-   
-    def update_info(self): #Extend standard MagicHomeLED update_info method to include warm white 
-        super().update_info()
-        
-
+    
     def setTemperature(self, command):
         if QUERY_BEFORE_CMD: self.update_info()
         _temp = int(command.get('value'))
@@ -431,7 +432,7 @@ class MagicHomeWWLED(MagicHomeLED): #Extended standard MagicHomeLED class to inc
         if _temp is None:
             LOGGER.error('Received Set Temperature Command on %s but no value supplied', self.address)
             return False
-        if (_temp < 2700 or temp > 6500): 
+        if (_temp < 2700 or _temp > 6500): 
             LOGGER.error('Received Set Temperature Command on %s but not within range of 2700-6500K (%i)', self.address, _temp)
             return False
 
@@ -442,7 +443,7 @@ class MagicHomeWWLED(MagicHomeLED): #Extended standard MagicHomeLED class to inc
         LOGGER.info('Received Set Temperature Command, updating %s to: %iK, brightness %i', self.address, _temp, _brightness)
         try:
             self.device.setWhiteTemperature(_temp, _brightness)
-            self.SetOn()
+            #self.SetOn()
             
             timer = threading.Timer(UPDATE_DELAY, self.update_info)
             timer.start()
@@ -460,8 +461,15 @@ class MagicHomeWWLED(MagicHomeLED): #Extended standard MagicHomeLED class to inc
             _blue = int(_query.get('B.uom56'))
             _white = int(_query.get('W.uom56'))
             if (_red + _green + _blue + _white) <= 0: return self.setOff()
-            LOGGER.info('Received RGBW Command, updating %s to: R:%i G:%i, B:%i, W:%i', self.address, _red, _green, _blue, _white)
-            self.device.setRgbw(_red, _green, _blue, _white)
+            if self.device.rgbwcapable:
+                LOGGER.info('Received RGBW Command, updating %s to: R:%i G:%i, B:%i, W:%i', self.address, _red, _green, _blue, _white)
+                _white = _val if _cmd == 'SETW' else self.white
+                self.device.setRgbw(_red, _green, _blue, _white)
+            elif (_red + _green + _blue) <= 0:
+                self.setWW({'value': _white})
+            else:
+                LOGGER.info('Received RGBW Command but bulb is not RGBW capable, updating %s to: R:%i G:%i, B:%i', self.address, _red, _green, _blue)
+                self.device.setRgb(r=_red, g=_green,b=_blue)
             self.device.turnOn()
             
             timer = threading.Timer(UPDATE_DELAY, self.update_info)
@@ -470,6 +478,97 @@ class MagicHomeWWLED(MagicHomeLED): #Extended standard MagicHomeLED class to inc
             LOGGER.error('Error setting RGBW on %s (%s). %s', self.address, str(command), str(ex))
             return False
         return True
+    
+    def setWW(self, command):
+        try:
+            _value = command.get('value')
+            
+            if QUERY_BEFORE_CMD: self.update_info()
+            
+            if _value is not None:
+                _value = int(_value)
+                if _value == 0:
+                    return self.setOff()
+                else:
+                    LOGGER.debug('Setting %s to warm white %s', self.address, str(_value))
+                    self.device.setWarmWhite255(_value)    
+        except Exception as ex:
+            LOGGER.error('Error setting %s warm white percentage to %s. %s', self.address, str(_value), str(ex))
+        
+        timer = threading.Timer(UPDATE_DELAY, self.update_info)
+        timer.start()
+        
+        return True
+ 
+    def setCW(self, command):
+        try:
+            _value = command.get('value')
+            
+            if QUERY_BEFORE_CMD: self.update_info()
+            
+            if _value is not None:
+                _value = int(_value)
+                if _value == 0:
+                    return self.setOff()
+                else:
+                    LOGGER.debug('Setting %s to cold white %s', self.address, str(_value))
+                    self.device.setColdWhite255(_value)    
+        except Exception as ex:
+            LOGGER.error('Error setting %s cold white percentage to %s. %s', self.address, str(_value), str(ex))
+        
+        timer = threading.Timer(UPDATE_DELAY, self.update_info)
+        timer.start()
+        
+        return True      
+    
+    def query(self, command=None):
+        LOGGER.debug('Querying %s', self.address)
+        self.update_info()
+
+    def longPoll(self):
+        self.query()
+
+    def poll(self):
+        pass
+            
+    drivers = [{'driver': 'ST', 'value': 0, 'uom': 51}, #BRIGHTNESS
+               {'driver': 'GV1', 'value': 0, 'uom': 56}, #RED
+               {'driver': 'GV2', 'value': 0, 'uom': 56}, #GREEN
+               {'driver': 'GV3', 'value': 0, 'uom': 56}, #BLUE
+               {'driver': 'GV6', 'value': 0, 'uom': 56}, #WARM WHITE
+               {'driver': 'GV7', 'value': 0, 'uom': 56}, #COLD WHITE
+               {'driver': 'GV4', 'value': 0, 'uom': 2}, #Connected
+               {'driver': 'GV5', 'value': 8, 'uom': 25} #Mode (Index)
+              ]
+
+    id = 'magichomeled'
+    commands = {
+                    'DON': setOn, 
+                    'DOF': setOff, 
+                    'DFON': fastOn, 
+                    'DFOF': fastOff, 
+                    'QUERY': query,
+                    'BRT': setBrtDim, 'DIM': setBrtDim, 
+                    'SET_COLOR': setColor, 
+                    'SETR': setManual, 'SETG': setManual, 'SETB': setManual, 'SETW': setManual,
+                    'SET_RGB': setRGB,
+                    'SET_RGBW': setRGBW,
+                    'SETWW': setWW,
+                    'SETCW': setCW,
+                    'SET_TEMP': setTemperature
+                }
+
+class MagicHomeWWLED(MagicHomeLED): #Provided for backward compatability
+   
+    def update_info(self):
+        super().update_info()
+        
+
+    def setTemperature(self, command):
+        super().setTemperature(command)
+
+    def setRGBW(self, command):
+        super().setRGBW(command)
 
     def setOn(self, command=None):
         super().setOn(command)
@@ -497,6 +596,12 @@ class MagicHomeWWLED(MagicHomeLED): #Extended standard MagicHomeLED class to inc
 
     def setRGB(self, command):
         super().setRGB(command)
+    
+    def setWW(self, command):
+        super().setWW(command)
+ 
+    def setCW(self, command):
+        super().setCW(command)
 
     def longPoll(self):
         super().longPoll(self)
@@ -508,7 +613,8 @@ class MagicHomeWWLED(MagicHomeLED): #Extended standard MagicHomeLED class to inc
                {'driver': 'GV1', 'value': 0, 'uom': 56}, #RED
                {'driver': 'GV2', 'value': 0, 'uom': 56}, #GREEN
                {'driver': 'GV3', 'value': 0, 'uom': 56}, #BLUE
-               {'driver': 'GV6', 'value': 0, 'uom': 56}, #WHITE
+               {'driver': 'GV6', 'value': 0, 'uom': 56}, #WARM WHITE
+               {'driver': 'GV7', 'value': 0, 'uom': 56}, #COLD WHITE
                {'driver': 'GV4', 'value': 0, 'uom': 2}, #Connected
                {'driver': 'GV5', 'value': 8, 'uom': 25} #Mode (Index)
               ]
@@ -525,6 +631,8 @@ class MagicHomeWWLED(MagicHomeLED): #Extended standard MagicHomeLED class to inc
                     'SETR': setManual, 'SETG': setManual, 'SETB': setManual, 'SETW': setManual,
                     'SET_RGB': setRGB,
                     'SET_RGBW': setRGBW,
+                    'SETWW': setWW,
+                    'SETCW': setCW,
                     'SET_TEMP': setTemperature
                 }
 

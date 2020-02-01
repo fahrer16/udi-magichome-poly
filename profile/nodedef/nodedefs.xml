@@ -21,6 +21,8 @@
       <st id="GV1" editor="mhledc"/>
       <st id="GV2" editor="mhledc"/>
       <st id="GV3" editor="mhledc"/>
+      <st id="GV6" editor="mhledc"/>
+      <st id="GV7" editor="mhledc"/>
       <st id="GV4" editor="mhbool"/>
       <st id="GV5" editor="mhmode"/>
     </sts>
@@ -39,6 +41,9 @@
         <cmd id="SET_COLOR">
           <p id="" editor="mhchoice"/>
         </cmd>
+        <cmd id="SET_TEMP">
+          <p id="" editor="mhtemp"/>
+        </cmd>
         <cmd id="SETR">
           <p id="" editor="mhledc" init="GV1"/>
         </cmd>
@@ -48,10 +53,25 @@
         <cmd id="SETB">
           <p id="" editor="mhledc" init="GV3"/>
         </cmd>
+		<cmd id="SETW">
+          <p id="" editor="mhledc" init="GV6"/>
+        </cmd>
+        <cmd id="SETWW">
+          <p id="" editor="mhledc" init="GV6"/>
+        </cmd>
+        <cmd id="SETCW">
+          <p id="" editor="mhledc" init="GV7"/>
+        </cmd>
         <cmd id="SET_RGB">
           <p id="R" editor="mhledc" init="GV1"/>
           <p id="G" editor="mhledc" init="GV2"/>
           <p id="B" editor="mhledc" init="GV3"/>
+        </cmd>
+		<cmd id="SET_RGBW">
+          <p id="R" editor="mhledc" init="GV1"/>
+          <p id="G" editor="mhledc" init="GV2"/>
+          <p id="B" editor="mhledc" init="GV3"/>
+          <p id="W" editor="mhledc" init="GV6"/>
         </cmd>
       </accepts>
     </cmds>
@@ -66,6 +86,7 @@
       <st id="GV2" editor="mhledc"/>
       <st id="GV3" editor="mhledc"/>
       <st id="GV6" editor="mhledc"/>
+      <st id="GV7" editor="mhledc"/>
       <st id="GV4" editor="mhbool"/>
       <st id="GV5" editor="mhmode"/>
     </sts>
@@ -98,6 +119,12 @@
         </cmd>
         <cmd id="SETW">
           <p id="" editor="mhledc" init="GV6"/>
+        </cmd>
+        <cmd id="SETWW">
+          <p id="" editor="mhledc" init="GV6"/>
+        </cmd>
+        <cmd id="SETCW">
+          <p id="" editor="mhledc" init="GV7"/>
         </cmd>
         <cmd id="SET_RGB">
           <p id="R" editor="mhledc" init="GV1"/>
