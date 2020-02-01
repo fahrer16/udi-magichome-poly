@@ -182,6 +182,11 @@ class MagicHomeLED(polyinterface.Node):
         self.white = 0
         self.white2 = 0
         self.device = device
+        self.last_red = 0
+        self.last_green = 0
+        self.last_blue = 0
+        self.last_white = 0
+        self.last_white2 = 0
 
     def start(self):
         LOGGER.info("%s MagicHome LED ready", self.address)
@@ -189,44 +194,50 @@ class MagicHomeLED(polyinterface.Node):
 
     def setOn(self, command=None):
         try:
-            LOGGER.info('Received command to turn on %s.', self.address)
             _value = command.get('value')
+            LOGGER.info('Received command to turn on %s (value = %s).', self.address, str(_value))
             
             if QUERY_BEFORE_CMD: self.update_info()
             
             if _value is not None:
                 _value = int(_value)
                 _str_mode = self.device.mode
+                
                 if _value == 0:
                     return self.setOff()
-                elif (self.red + self.green + self.blue) > 0:
-                    if self.device.rgbwcapable:
-                        _existing_color = self.device.getRgbw()
+                else:
+                    _existing_color = [self.red, self.green, self.blue, self.white, self.white2]
+                    _max = max(_existing_color)
+                    if _max <= 0: #If the bulb is already off when an on command is issued, use the previous state when the bulb was not off instead
+                        LOGGER.debug('%s is off when on command received, defaulting to white', self.address)
+                        _existing_color = [self.last_red, self.last_green, self.last_blue, self.last_white, self.last_white2]
                         _max = max(_existing_color)
-                        _red = int(_existing_color[0] / _max * 255. * _value / 100.)
-                        _green = int(_existing_color[1] / _max * 255. * _value / 100.)
-                        _blue = int(_existing_color[2] / _max * 255. * _value / 100.)
-                        _white = int(_existing_color[3] / _max * 255. * _value / 100.)
-                        LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s, white=%s', self.address, str(_red), str(_green), str(_blue), str(_white)) 
-                        self.device.setRgbw(_red, _green, _blue, _white)
-                    else:
-                        _existing_color = self.device.getRgb()
-                        _max = max(_existing_color)
-                        _red = int(_existing_color[0] / _max * 255. * _value / 100.)
-                        _green = int(_existing_color[1] / _max * 255. * _value / 100.)
-                        _blue = int(_existing_color[2] / _max * 255. * _value / 100.)
-                        LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s', self.address, str(_red), str(_green), str(_blue)) #21Jan2020 Added self.address
-                        self.device.setRgb(_red, _green, _blue)
-                elif self.white > 0 and self.white2 > 0:
-                    _newWhite = int(self.white / _max * 255. * _value / 100.)
-                    _newWhite2 = int(self.white2 / _max * 255. * _value / 100.)
-                    self.device.setRgbw(w=_newWhite,w2=newWhite2)
-                elif self.white > 0 and self.white2 <= 0:
-                    self.setWW({'value': int(255. * _value / 100.)})
-                elif self.white <= 0 and self.white2 > 0:
-                    self.setCW({'value': int(255. * _value / 100.)})
+                        if _max <= 0:
+                            #maximum is still 0 (no previous state recorded).  Set _existing_color to full on white so we don't run into divide by 0 errors below
+                            #this should only happen if the node server has been reset and this is the first time we're turning on a bulb AND we've specified an on level
+                            _existing_color = [255,255,255,255,255]
+                            _max = max(_existing_color)
+                    _red = int(_existing_color[0] / _max * 255. * _value / 100.)
+                    _green = int(_existing_color[1] / _max * 255. * _value / 100.)
+                    _blue = int(_existing_color[2] / _max * 255. * _value / 100.)
+                    _white = int(_existing_color[3] / _max * 255. * _value / 100.)
+                    _white2 = int(_existing_color[4] / _max * 255. * _value / 100.)
+                    if (_red + _green + _blue) > 0:
+                        if self.device.rgbwcapable:
+                            LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s, white=%s', self.address, str(_red), str(_green), str(_blue), str(_white)) 
+                            self.device.setRgbw(_red, _green, _blue, _white)
+                        else:
+                            LOGGER.debug('Setting %s to red=%s, green=%s, blue=%s', self.address, str(_red), str(_green), str(_blue)) #21Jan2020 Added self.address
+                            self.device.setRgb(_red, _green, _blue)
+                    elif _white > 0 and _white2 > 0:
+                        self.device.setRgbw(w=_white,w2=_white2)
+                    elif _white > 0 and _white2 <= 0:
+                        self.setWW({'value': int(255. * _value / 100.)})
+                    elif _white <= 0 and _white2 > 0:
+                        self.setCW({'value': int(255. * _value / 100.)})
             else:
-                LOGGER.debug('On command received for %s but no value supplied', self.address) 
+                LOGGER.debug('On command received for %s but no value supplied', self.address)
+                
                     
         except Exception as ex:
             LOGGER.error('Error turning on %s (command=%s). %s', self.address, str(command), str(ex))
@@ -361,66 +372,78 @@ class MagicHomeLED(polyinterface.Node):
             _str_mode = self.device.mode
             if _str_mode == 'off' or not self.device.is_on:
                 self.setDriver('GV5',0)
-                self.setDriver('ST',0)
-            elif _str_mode == 'color':
-                self.setDriver('GV5',1)
-                if self.device.rgbwcapable:
-                    _color = self.device.getRgbw()
-                    self.setDriver('GV1', _color[0])
-                    self.setDriver('GV2', _color[1])
-                    self.setDriver('GV3', _color[2])
-                    self.setDriver('GV6', _color[3])
-                    self.white = _color[3]
-                else:
-                    _color = self.device.getRgb()
-                    self.setDriver('GV1', _color[0])
-                    self.setDriver('GV2', _color[1])
-                    self.setDriver('GV3', _color[2])
-                    #self.setDriver('GV6',0)
-                    #self.setDriver('GV7',0)
-                self.red = _color[0]
-                self.green = _color[1]
-                self.blue = _color[2]
-                try:
-                    #try getting the value of white 2 (cold white), if it exists:
-                    _color = self.device.getRgbww()
-                    self.setDriver('GV7', _color[4])
-                    self.white2 = 0
-                except:
-                    self.setDriver('GV7',0)
-                self.brightness = math.ceil(max(_color) / 255. * 100.)
-                self.setDriver('ST', self.brightness)
-            elif _str_mode == 'ww':
-                self.setDriver('GV5',2)
-                _ww = self.device.getWarmWhite255() if self.device.mode == 'ww' else 0
-                self.white = _ww
-                self.setDriver('GV6', _ww)
-                _brightness = int(math.ceil(_ww / 255. * 100.))
-                self.brightness = _brightness
-                self.setDriver('ST', _brightness)
-                self.setDriver('GV1', 0)
-                self.setDriver('GV2', 0)
-                self.setDriver('GV3', 0)
-                self.setDriver('GV7',0)
                 self.red = 0
                 self.green = 0
                 self.blue = 0
+                self.white = 0
                 self.white2 = 0
-            #TODO: Support for the following modes is not yet fully implemented:
-            elif _str_mode == 'custom':
-                self.setDriver('GV5',3)
-            elif _str_mode == 'preset':
-                self.setDriver('GV5',4)
-            elif _str_mode == 'sunrise':
-                self.setDriver('GV5',5)
-            elif _str_mode == 'sunset':
-                self.setDriver('GV5',6)
-            elif _str_mode == 'default':
-                self.setDriver('GV5',7)
-            else: #unknown
-                self.setDriver('GV5',8)
+                self.brightness = 0
+            else:
+                try:
+                    _color = self.device.getRgbww()
+                    self.red = _color[0]
+                    self.green = _color[1]
+                    self.blue = _color[2]
+                    self.white = _color[3]
+                    self.white2 = _color[4]
+                except Exception as ex:
+                        LOGGER.info('Could not get RGBWW for %s: %s', self.address, str(ex))
+                        try:
+                            _color = self.device.getRgbw()
+                            self.red = _color[0]
+                            self.green = _color[1]
+                            self.blue = _color[2]
+                            self.white = _color[3]
+                            self.white2 = 0
+                        except Exception as ex:
+                            LOGGER.info('Could not get RGBW for %s: %s', self.address, str(ex))
+                            _color = self.device.getRgb()
+                            self.red = _color[0]
+                            self.green = _color[1]
+                            self.blue = _color[2]
+                            self.white = 0
+                            self.white2 = 0
+                if _str_mode == 'color':
+                    self.setDriver('GV5',1)
+                elif _str_mode == 'ww':
+                    self.red = 0
+                    self.green = 0
+                    self.blue = 0
+                    try:
+                        self.white = self.device._rgbw[3]
+                        self.white2 = self.device.raw_state[11]
+                    except Exception as ex:
+                            LOGGER.info('Could not retrieve white LED status for %s: %s', self.address, str(ex))
+                    self.setDriver('GV5',2)
+                #TODO: Support for the following modes is not yet fully implemented in the node server:
+                elif _str_mode == 'custom':
+                    self.setDriver('GV5',3)
+                elif _str_mode == 'preset':
+                    self.setDriver('GV5',4)
+                elif _str_mode == 'sunrise':
+                    self.setDriver('GV5',5)
+                elif _str_mode == 'sunset':
+                    self.setDriver('GV5',6)
+                elif _str_mode == 'default':
+                    self.setDriver('GV5',7)
+                else: #unknown
+                    self.setDriver('GV5',8)
 
+                self.brightness = math.ceil(max(self.red, self.green, self.blue, self.white, self.white2) / 255. * 100.)
+                self.last_red = self.red
+                self.last_green = self.green
+                self.last_blue = self.blue
+                self.last_white = self.white
+                self.last_white2 = self.white2
+            
+            self.setDriver('ST', self.brightness)            
+            self.setDriver('GV1', self.red)
+            self.setDriver('GV2', self.green)
+            self.setDriver('GV3', self.blue)
+            self.setDriver('GV6', self.white)
+            self.setDriver('GV7', self.white2)
             self.setDriver('GV4', 1) #Connected
+            
         except Exception as ex:
             LOGGER.error('Error updating device info for %s: %s', self.address, str(ex))
             self.setDriver('GV4', 0) #Connected = False
@@ -437,7 +460,7 @@ class MagicHomeLED(polyinterface.Node):
             return False
 
         #Check that bulb brightness is proper, if it's too low, set it to 100% (255)
-        _brightness = min(max(self.device.brightness / 100. * 255.,0),255)
+        _brightness = min(max(self.brightness / 100. * 255.,0),255)
         if _brightness == 0: _brightness = 255
 
         LOGGER.info('Received Set Temperature Command, updating %s to: %iK, brightness %i', self.address, _temp, _brightness)
@@ -491,7 +514,8 @@ class MagicHomeLED(polyinterface.Node):
                     return self.setOff()
                 else:
                     LOGGER.debug('Setting %s to warm white %s', self.address, str(_value))
-                    self.device.setWarmWhite255(_value)    
+                    #self.device.setWarmWhite255(_value)   
+                    self.device.setRgbw(w=_value,w2=self.white2) #Default behavior in flux_led module is to write both warm white and cold white to same value if only one is written.  In order to only write one, we're setting the White2 value to the existing level so that it stays the same
         except Exception as ex:
             LOGGER.error('Error setting %s warm white percentage to %s. %s', self.address, str(_value), str(ex))
         
@@ -512,7 +536,8 @@ class MagicHomeLED(polyinterface.Node):
                     return self.setOff()
                 else:
                     LOGGER.debug('Setting %s to cold white %s', self.address, str(_value))
-                    self.device.setColdWhite255(_value)    
+                    #self.device.setColdWhite255(_value)
+                    self.device.setRgbw(w=self.white,w2=_value) #Default behavior in flux_led module is to write both warm white and cold white to same value if only one is written.  In order to only write one, we're setting the White value to the existing level so that it stays the same
         except Exception as ex:
             LOGGER.error('Error setting %s cold white percentage to %s. %s', self.address, str(_value), str(ex))
         
