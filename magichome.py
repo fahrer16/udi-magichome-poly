@@ -473,6 +473,7 @@ class MagicHomeLED(polyinterface.Node):
     def setRGBW(self, command):
         try:
             if QUERY_BEFORE_CMD: self.update_info()
+            _cmd = command.get('value')
             _query = command.get('query')
             _red = int(_query.get('R.uom56'))
             _green = int(_query.get('G.uom56'))
