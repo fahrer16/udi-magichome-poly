@@ -481,7 +481,6 @@ class MagicHomeLED(polyinterface.Node):
             if (_red + _green + _blue + _white) <= 0: return self.setOff()
             if self.device.rgbwcapable:
                 LOGGER.info('Received RGBW Command, updating %s to: R:%i G:%i, B:%i, W:%i', self.address, _red, _green, _blue, _white)
-                _white = _val if _cmd == 'SETW' else self.white
                 self.device.setRgbw(_red, _green, _blue, _white)
             elif (_red + _green + _blue) <= 0:
                 self.setWW({'value': _white})
