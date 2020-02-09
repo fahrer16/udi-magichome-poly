@@ -150,7 +150,6 @@ class Controller(polyinterface.Controller):
             address = address[-14:]
             if address not in self.nodes:
                 led = WifiLedBulb(d['ipaddr'])
-                LOGGER.info('flux_led protocol version = %s',str(led.flux_led_version))
                 if led.rgbwcapable:
                     LOGGER.info('Adding new MagicHome RGBW LED: %s(%s)', name, address)
                     self.addNode(MagicHomeLED(self, self.address, address, name, device = led)) #Two node types merged, both kept herein for backwards compatability BF 30Jan2020

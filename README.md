@@ -35,3 +35,4 @@ Version History:
 * 2.1.0: Combined RGB and RGBW nodes into a single node (both definitions were kept for backwards compatability).  Previously, the report from the underlying flux_led protocol was used to determine whether to add a bulb with white capability or not.  Apparently this does not actually mean the bulb has warm or cold white LED's but rather refers only to the protocol type used.  Because the protocol isn't specific about whether a bulb does or does not have white capability, this will be exposed for all bulbs but obviously if a bulb does not actually have white LED's then this capability will not actually do anything.  Also added capability for cold white control.
 * 2.1.1: Removed use of white LED's when setting preset "Warm White" and "Cold White" colors.
 * 2.1.2: Corrected error in setRgbw command.
+* 2.1.3: Removed check of flux_led package version to avoid issues resulting from that package not being upgraded automatically.
