@@ -36,3 +36,4 @@ Version History:
 * 2.1.1: Removed use of white LED's when setting preset "Warm White" and "Cold White" colors.
 * 2.1.2: Corrected error in setRgbw command.
 * 2.1.3: Removed check of flux_led package version to avoid issues resulting from that package not being upgraded automatically.
+* 2.1.4: Removed blank line at the end of editors.xml
